@@ -1,29 +1,48 @@
 /**
- * RSVP -> Google Sheet
- * Dán toàn bộ file này vào Apps Script (Extensions > Apps Script) của Google Sheet.
- * Sau đó Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone.
- * Copy đường link Web app (dạng https://script.google.com/macros/s/..../exec)
- * và dán vào biến RSVP_ENDPOINT trong file index.html.
+ * RSVP & Lời chúc -> Google Sheet (DÙNG CHUNG cho mọi cặp đôi)
+ * Mỗi dòng có cột "Mã cặp đôi" (couple_id) để tách dữ liệu của từng cặp.
+ *
+ * Cách dùng: Extensions > Apps Script, dán file này vào, rồi
+ * Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone.
+ * Copy link Web app (https://script.google.com/macros/s/..../exec) và dán vào
+ * trường rsvpEndpoint trong file config.js của thiệp.
+ *
+ * Sau khi sửa file, BẤM "Deploy > Manage deployments > (bút chì) > Version: New"
+ * để cập nhật, nếu không link cũ vẫn chạy code cũ.
  */
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('RSVP')
-             || SpreadsheetApp.getActiveSpreadsheet().insertSheet('RSVP');
-
-    // Tạo dòng tiêu đề nếu sheet còn trống
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['Thời gian', 'Họ và tên', 'Tham dự', 'Nơi tham dự', 'Số lượng', 'Lời chúc']);
-    }
-
     var p = (e && e.parameter) ? e.parameter : {};
-    sheet.appendRow([
-      new Date(),
-      p.name || '',
-      p.attending || '',
-      p.party || '',
-      p.guests || '',
-      p.message || ''
-    ]);
+    var type = String(p.type || 'rsvp').toLowerCase();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    if (type === 'wish') {
+      var ws = ss.getSheetByName('Wishes') || ss.insertSheet('Wishes');
+      if (ws.getLastRow() === 0) {
+        ws.appendRow(['Thời gian', 'Mã cặp đôi', 'Họ và tên', 'Mối quan hệ', 'Lời chúc']);
+      }
+      ws.appendRow([
+        new Date(),
+        p.couple_id || '',
+        p.name || '',
+        p.relation || '',
+        p.wish_message || p.message || ''
+      ]);
+    } else {
+      var sheet = ss.getSheetByName('RSVP') || ss.insertSheet('RSVP');
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow(['Thời gian', 'Mã cặp đôi', 'Họ và tên', 'Tham dự', 'Nơi tham dự', 'Số lượng', 'Lời chúc']);
+      }
+      sheet.appendRow([
+        new Date(),
+        p.couple_id || '',
+        p.name || '',
+        p.attending || p.is_attending || '',
+        p.party || p.party_side || '',
+        p.guests || p.guest_count || '',
+        p.message || ''
+      ]);
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true }))
